@@ -1,9 +1,6 @@
 import csv
 import json
 import lyricsgenius
-import re
-
-
 
 
 lyricsgenius.remove_section_headers = True  #Remove section headers (e.g. [Chorus]) from lyrics when searching
@@ -18,21 +15,35 @@ client_access_token = 'ke3Pnl3QrBw7R6QhKv_BieE80GfHg2CryO1Lru-Kdrvp9Kr78jngScx-5
 genius = lyricsgenius.Genius(client_access_token)
 genius.verbose = True  # Turn off status messages
 # artist = genius.search_artist("Electric Wizard", sort="title")
-artist = genius.search_artist("Electric Wizard", max_songs=3, sort="title")
+artist = genius.search_artist("Electric Wizard", max_songs=10, sort="title")
 artist.save_lyrics()
 
 
+#cleaning data
+def clean_str(raw_str):
+    exclude_sym = ["&", "/", "+", "-", "[", "]", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "(", ")"]
+    exclude_word = ["Chorus", "Instrumental", "Verse", "Solo", "Hook"]
+    # exclude_nan = ["NaN"]
+    # for nan_excl in exclude_nan:
+    #     raw_str = raw_str.replace(nan_excl, 'None')
+    for word_to_excl in exclude_word:
+        raw_str = raw_str.replace(word_to_excl, ' ')
+    for sym_to_excl in exclude_sym:
+        raw_str = raw_str.replace(sym_to_excl, ' ')
+    return raw_str
+
+#save data to csv
 albums = {}
 song_df = []
 for song in artist.songs:
-    song_df.append({'Album': song.album, 'Title': song.title, 'Lyrics': song.lyrics})
-
+    clean_lyrics = clean_str(song.lyrics)
+    if clean_lyrics:
+        song_df.append({
+            'Album': clean_str(song.album),
+            'Title': clean_str(song.title),
+            'Lyrics': clean_lyrics,
+        })
 # print(song_df)
-
-# exclude_sym = ["\n","&","/","...","[","]"]
-
-
-
 
 with open('song_dataset_test.csv', 'w', encoding='utf-8') as csv_file:
     fieldnames = ['Album', 'Title', 'Lyrics']
@@ -41,9 +52,9 @@ with open('song_dataset_test.csv', 'w', encoding='utf-8') as csv_file:
     for song in song_df:
         writer.writerow(song)
 
-
+#convert csv to json
 csv_file = 'song_dataset_test.csv'
-json_file = 'song_dataset_test.csv.json'
+json_file = 'song_dataset_test.json'
 fieldnames = ['Album', 'Title', 'Lyrics']
 def read_csv(csv_file, json_file):
     csv_rows = []
@@ -61,3 +72,13 @@ def convert_to_json(data, json_file):
         f.write(json.dumps(data))
 
 read_csv(csv_file,json_file)
+
+
+#open data for analysis
+nrc = 'NRC_Emotion_Lexicon.csv'
+with open (nrc, 'r', encoding = 'utf-8') as nrc_emotion:
+    fields = ['English (en)', 'Positive', 'Negative', 'Anger', 'Anticipation', 'Disgust', 'Fear', 'Joy', 'Sadness',
+              'Surprise', 'Trust']
+    reader = csv.DictReader(nrc_emotion, fields)
+    # for row in reader:
+    #     print(row)
